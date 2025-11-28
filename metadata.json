@@ -1,0 +1,5 @@
+{
+  "name": "PlantUML AI Studio",
+  "description": "A powerful PlantUML editor and viewer powered by Google Gemini for intelligent diagram generation and Kroki for instant rendering.",
+  "requestFramePermissions": []
+}
