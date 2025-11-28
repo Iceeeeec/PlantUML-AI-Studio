@@ -1,9 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 
 const getClient = () => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
-    throw new Error("API Key not found. Please ensure process.env.API_KEY is set.");
+    throw new Error("API Key not found. Please create a .env.local file in the project root and add VITE_API_KEY='YOUR_API_KEY'.");
   }
   return new GoogleGenAI({ apiKey });
 };
