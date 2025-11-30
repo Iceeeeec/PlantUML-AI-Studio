@@ -1,48 +1,37 @@
-import { GoogleGenAI } from "@google/genai";
+import { encrypt, decrypt } from '../utils/crypto';
 
-const getClient = () => {
-  const apiKey = import.meta.env.VITE_API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key not found. Please create a .env.local file in the project root and add VITE_API_KEY='YOUR_API_KEY'.");
-  }
-  return new GoogleGenAI({ apiKey });
-};
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export const generatePlantUML = async (userPrompt: string, currentCode?: string): Promise<string> => {
   try {
-    const ai = getClient();
-    
-    let systemInstruction = `You are a PlantUML expert. Your task is to generate valid PlantUML code based on the user's description.
-    Rules:
-    1. Output ONLY the PlantUML code.
-    2. Start with @startuml and end with @enduml.
-    3. Do not add markdown code blocks (like \`\`\`plantuml).
-    4. Do not add explanations or conversational text.
-    5. Use modern PlantUML syntax and styling (skinparam) to make diagrams look professional and clean.
-    6. If the user provides existing code, modify it according to their request.`;
+    // 加密请求数据
+    const requestData = JSON.stringify({
+      prompt: userPrompt,
+      currentCode,
+    });
+    const encryptedData = await encrypt(requestData);
 
-    let prompt = userPrompt;
-
-    if (currentCode) {
-        prompt = `Current Code:\n${currentCode}\n\nUser Request: ${userPrompt}\n\nUpdate the code based on the request.`;
-    }
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.2, // Low temperature for deterministic code generation
-      }
+    const response = await fetch(`${API_URL}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ data: encryptedData }),
     });
 
-    const text = response.text || "";
-    // Clean up if the model accidentally included markdown
-    const cleanedText = text.replace(/```plantuml/g, '').replace(/```/g, '').trim();
-    return cleanedText;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to generate PlantUML code');
+    }
 
+    // 解密响应数据
+    const { data: encryptedResponse } = await response.json();
+    const decryptedResponse = await decrypt(encryptedResponse);
+    const result = JSON.parse(decryptedResponse);
+    
+    return result.code;
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    throw new Error("Failed to generate PlantUML code. Please check your API key and try again.");
+    console.error("API Error:", error);
+    throw new Error("Failed to generate PlantUML code. Please check the server and try again.");
   }
 };
